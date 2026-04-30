@@ -1,18 +1,18 @@
-import numpy as np
+from sklearn.ensemble import GradientBoostingClassifier
 
-def poisson_try_prob(player_rate, team_attack, opp_defense):
-    lam = player_rate * team_attack / opp_defense
+def train_model(df):
+    features = [
+        "player_rate",
+        "form",
+        "attack_strength",
+        "defense_strength",
+        "is_home"
+    ]
 
-    # Probability of scoring at least 1 try
-    prob = 1 - np.exp(-lam)
+    X = df[features]
+    y = df["target"]
 
-    return min(prob, 1.0)
+    model = GradientBoostingClassifier()
+    model.fit(X, y)
 
-
-def matchup_model(player, team_row, opp_row):
-    player_rate = player["tries"] / player["appearances"]
-
-    team_attack = team_row["attack_strength"]
-    opp_defense = opp_row["defense_strength"]
-
-    return poisson_try_prob(player_rate, team_attack, opp_defense)
+    return model, features
