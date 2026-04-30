@@ -1,33 +1,28 @@
 import pandas as pd
+import numpy as np
 
-def rolling_form(tries, matches, player_id, window=5):
+def build_features(matches, tries, players, teams):
     df = tries.merge(matches, on="match_id")
-    df = df[df["player_id"] == player_id].sort_values("date")
+    df = df.merge(players, on="player_id")
+    df = df.merge(teams, on="team_id")
 
-    df["rolling_tries"] = df["tries_scored"].rolling(window).mean()
+    # Player scoring rate
+    df["player_rate"] = df["tries"] / df["appearances"]
 
-    return df.tail(window)
+    # Rolling form
+    df = df.sort_values("date")
+    df["form"] = df.groupby("player_id")["tries_scored"]\
+                   .rolling(5).mean().reset_index(0, drop=True)
 
-
-def team_strength(teams):
+    # Team strength
     league_avg = teams["points_for"].mean()
+    df["attack_strength"] = df["points_for"] / league_avg
+    df["defense_strength"] = df["points_against"] / league_avg
 
-    teams["attack_strength"] = teams["points_for"] / league_avg
-    teams["defense_strength"] = teams["points_against"] / league_avg
+    # Home advantage
+    df["is_home"] = (df["team_name"] == df["home_team"]).astype(int)
 
-    return teams
+    # Target: scored try or not
+    df["target"] = (df["tries_scored"] > 0).astype(int)
 
-
-def defensive_profile(events, team):
-    conceded = events[
-        (events["event_type"] == "try") &
-        (events["team"] != team)
-    ].copy()
-
-    conceded["zone"] = pd.cut(
-        conceded["x"],
-        bins=[0, 33, 66, 100],
-        labels=["Left", "Middle", "Right"]
-    )
-
-    return conceded["zone"].value_counts(normalize=True)
+    return df.dropna()
